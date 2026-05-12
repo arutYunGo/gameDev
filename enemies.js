@@ -86,15 +86,12 @@ function updateEnemies(scene) {
 
     liveMonsters.getChildren().forEach(function(enemy) {
         if (!enemy.active) return;
+        if (enemy.getData('isFormTarget')) return;
 
         var dist = Phaser.Math.Distance.Between(player.x, player.y, enemy.x, enemy.y);
         if (dist < nearest) {
             nearest = dist;
             nearEnemy = enemy;
-        }
-
-        if (enemy.getData('isFormTarget')) {
-            return;
         }
 
         if (dist < 280) {
