@@ -115,64 +115,69 @@ function create() {
     // ── platforms ─────────────────────────────────────────────────────────────
     platforms = this.physics.add.staticGroup();
 
-    // Floor sections (gaps = spike pits)
-    makeFloor(32,   900);          // Room 1
-    makeFloor(1100, 2100);         // Room 2
-    makeFloor(2300, 3300);         // Room 3
-    makeFloor(3500, 4768);         // Room 4 (exit)
+    // Main floors — high up, plenty of space
+    var floorY = WORLD_H - 180;
+    
+    makeFloor(32,   950);          // Room 1 main floor
+    makeFloor(1100, 2050);         // Room 2 main floor
+    makeFloor(2300, 3200);         // Room 3 main floor
+    makeFloor(3500, 4768);         // Room 4 main floor (exit)
 
-    // Platforms above floor (slime: jump ~115px, goblin: ~300px)
-    // Mid platforms — slime-reachable (100px above floor top 868 → shelf center = 752)
-    makeShelf(180,  480,  WORLD_H - 116);  // Room 1 mid
-    makeShelf(1150, 1550, WORLD_H - 116);  // Room 2 mid-left
-    makeShelf(1700, 2050, WORLD_H - 116);  // Room 2 mid-right
-    makeShelf(2350, 2750, WORLD_H - 116);  // Room 3 mid
-    makeShelf(3550, 3950, WORLD_H - 116);  // Room 4 mid
-    makeShelf(4100, 4450, WORLD_H - 116);  // Room 4 far
+    // Mid platforms — optional challenge (130px above main floor)
+    var midY = floorY - 130;
+    makeShelf(200,  420,  midY);   // Room 1 mid
+    makeShelf(1200, 1480, midY);   // Room 2 mid-left
+    makeShelf(1800, 2000, midY);   // Room 2 mid-right
+    makeShelf(2450, 2700, midY);   // Room 3 mid
+    makeShelf(3650, 3900, midY);   // Room 4 mid
+    makeShelf(4150, 4400, midY);   // Room 4 far
 
-    // High platforms — goblin-only (220px above floor → shelf center = 632)
-    makeShelf(250,  600,  WORLD_H - 236);  // Room 1 high
-    makeShelf(1200, 1500, WORLD_H - 256);  // Room 2 high
-    makeShelf(2400, 2700, WORLD_H - 256);  // Room 3 high
-    makeShelf(3600, 3900, WORLD_H - 236);  // Room 4 high
+    // High platforms — goblin challenge (280px above main floor)
+    var highY = floorY - 280;
+    makeShelf(300,  550,  highY);  // Room 1 high
+    makeShelf(1300, 1400, highY);  // Room 2 high (narrow)
+    makeShelf(2550, 2750, highY);  // Room 3 high
+    makeShelf(3700, 3800, highY);  // Room 4 high (narrow)
 
-    // Small stepping stones over gaps
-    makeShelf(930,  1000, WORLD_H - 116);  // over gap 1 (900-1100)
-    makeShelf(2150, 2240, WORLD_H - 116);  // over gap 2 (2100-2300)
-    makeShelf(3340, 3430, WORLD_H - 116);  // over gap 3 (3300-3500)
+    // Stepping stones over big gaps (at mid height)
+    makeShelf(950,  1050, midY);   // over gap 1 (950-1100)
+    makeShelf(2200, 2280, midY);   // over gap 2 (2050-2300)
+    makeShelf(3380, 3470, midY);   // over gap 3 (3200-3500)
 
     // ── spikes ────────────────────────────────────────────────────────────────
     traps = this.physics.add.staticGroup();
-    spikeRow(900,  1100);
-    spikeRow(2100, 2300);
-    spikeRow(3300, 3500);
+    var spikeY = WORLD_H - 100;  // Deep pits
+    spikeRow(950,  1100, spikeY);
+    spikeRow(2050, 2300, spikeY);
+    spikeRow(3200, 3500, spikeY);
 
     // Spike glow
-    [900, 2100, 3300].forEach(function(sx) {
-        var g = this.add.graphics().setDepth(1).setAlpha(0.18);
-        g.fillStyle(0x6600cc, 1); g.fillRect(sx, WORLD_H-100, 200, 100);
+    [975, 2175, 3350].forEach(function(sx) {
+        var g = this.add.graphics().setDepth(1).setAlpha(0.15);
+        g.fillStyle(0x6600cc, 1); g.fillRect(sx-75, spikeY-80, 150, 80);
     }, this);
 
     // ── torches ───────────────────────────────────────────────────────────────
     [
-        [220, WORLD_H-32], [550, WORLD_H-32], [780, WORLD_H-32],
-        [220, WORLD_H-148], [500, WORLD_H-148],        // on mid shelf
-        [300, WORLD_H-268], [550, WORLD_H-268],        // on high shelf
-        [1150, WORLD_H-32], [1600, WORLD_H-32], [2000, WORLD_H-32],
-        [1300, WORLD_H-148], [1800, WORLD_H-148],
-        [2350, WORLD_H-32], [2800, WORLD_H-32], [3200, WORLD_H-32],
-        [2500, WORLD_H-148], [2650, WORLD_H-148],
-        [3550, WORLD_H-32], [3900, WORLD_H-32], [4200, WORLD_H-32], [4600, WORLD_H-32],
-        [3700, WORLD_H-148]
+        [220, floorY], [550, floorY], [800, floorY],
+        [250, midY], [450, midY],                      // on mid shelf
+        [350, highY], [500, highY],                    // on high shelf
+        [1150, floorY], [1600, floorY], [2000, floorY],
+        [1300, midY], [1850, midY],
+        [2350, floorY], [2800, floorY], [3100, floorY],
+        [2550, midY], [2700, midY],
+        [3550, floorY], [3900, floorY], [4200, floorY], [4600, floorY],
+        [3750, midY]
     ].forEach(function(t) { addTorch(this, t[0], t[1]); }, this);
 
     // ── mushrooms ─────────────────────────────────────────────────────────────
-    [130, 450, 700, 1120, 1500, 1900, 2350, 2700, 3550, 3850, 4150, 4500].forEach(function(mx) {
-        addMushroom(this, mx, WORLD_H-32);
+    [150, 450, 750, 1150, 1500, 1950, 2400, 2750, 3600, 3900, 4200, 4600].forEach(function(mx) {
+        addMushroom(this, mx, floorY);
     }, this);
-    // On shelves
-    [320, 480].forEach(function(mx) { addMushroom(this, mx, WORLD_H-148); }, this);
-    [1350, 1800].forEach(function(mx) { addMushroom(this, mx, WORLD_H-148); }, this);
+    // On mid shelves
+    [320, 400].forEach(function(mx) { addMushroom(this, mx, midY); }, this);
+    [1350, 1850].forEach(function(mx) { addMushroom(this, mx, midY); }, this);
+    [2600, 2700].forEach(function(mx) { addMushroom(this, mx, midY); }, this);
 
     // ── skull/bone decorations ────────────────────────────────────────────────
     [380, 650, 1350, 2450, 3650, 4300].forEach(function(bx) {
@@ -184,10 +189,8 @@ function create() {
     spawnDeadGoblin(this);
     liveMonsters = this.physics.add.group();
 
-    // ── PLAYER ────────────────────────────────────────────────────────────────
+    // ── PLAYER ────────────────────────────────────────────────────────────────────
     // origin(0.5, 1) → sprite.y = visual bottom.
-    // body.bottom = sprite.y - displayOriginY + offsetY + bodyH
-    // For slime: displayOriginY=96, offsetY=68, bodyH=28 → 68+28=96 → body.bottom = sprite.y ✓
     player = this.physics.add.sprite(120, WORLD_H-32, 'slime_idle');
     player.setOrigin(0.5, 1);
     player.setScale(3);
@@ -195,8 +198,8 @@ function create() {
     player.setCollideWorldBounds(true);
     player.setDragX(1400);
     player.setDepth(5);
-    player.body.setSize(60, 28);
-    player.body.setOffset(18, 68);
+    player.body.setSize(24, 24);
+    player.body.setOffset(4, 8);
     player.anims.play('slime-idle');
 
     this.physics.add.collider(player, platforms);
@@ -241,13 +244,13 @@ function create() {
 // ── level helpers ─────────────────────────────────────────────────────────────
 
 function makeFloor(x1, x2) {
-    for (var x = x1; x < x2; x += 32) platforms.create(x+16, WORLD_H-16, 'stone');
+    for (var x = x1; x < x2; x += 32) platforms.create(x+16, WORLD_H-32, 'stone');
 }
 function makeShelf(x1, x2, yCenter) {
     for (var x = x1; x < x2; x += 32) platforms.create(x+16, yCenter, 'stone');
 }
-function spikeRow(x1, x2) {
-    for (var x = x1; x < x2; x += 32) traps.create(x+16, WORLD_H-48, 'spikes').refreshBody();
+function spikeRow(x1, x2, y) {
+    for (var x = x1; x < x2; x += 32) traps.create(x+16, y, 'spikes').refreshBody();
 }
 
 // ── visual helpers ────────────────────────────────────────────────────────────
@@ -395,7 +398,7 @@ function respawn() {
 // ── form system ───────────────────────────────────────────────────────────────
 function applyForm(type) {
     // With origin(0.5,1): sprite.y = visual bottom.
-    // Our offsets guarantee body.bottom = sprite.y, so save player.y as foot position.
+    // Save current position BEFORE changing texture/scale
     var footY = player.y;
 
     playerForm = type;
@@ -405,9 +408,13 @@ function applyForm(type) {
         player.setTexture('slime_idle');
         player.setOrigin(0.5, 1);
         player.setScale(3);
-        // display=96×96, displayOriginY=96, offsetY+bodyH = 68+28 = 96 → body.bottom = sprite.y ✓
-        player.body.setSize(60, 28);
-        player.body.setOffset(18, 68);
+        // 32×32 frame. At scale 3 = 96×96 world pixels
+        // Body height 24 at scale 3 = 72px. Offset 4 means 4px from left in frame.
+        // Offset Y=8 means 24px down from top of frame (8px in frame × 3 = 24px world)
+        // Body bottom = sprite.y - displayOriginY + offsetY + bodyH
+        //            = sprite.y - 96 + 24 + 72 = sprite.y ✓
+        player.body.setSize(24, 24);
+        player.body.setOffset(4, 8);
         formText.setText('Форма: Слизень');
         formText.setStyle({ fill:'#44ff66', fontSize:'20px' });
         player.anims.play('slime-idle', true);
@@ -416,15 +423,17 @@ function applyForm(type) {
         player.setTexture('goblin_idle');
         player.setOrigin(0.5, 1);
         player.setScale(0.7);
-        // display=140×140, displayOriginY=140, offsetY+bodyH = 40+100 = 140 → body.bottom = sprite.y ✓
-        player.body.setSize(60, 100);
-        player.body.setOffset(40, 40);
+        // 200×200 frame. At scale 0.7 = 140×140 world pixels
+        // Body size 80×120 at scale 0.7 = 56×84 world pixels
+        // Offset (60, 60) in frame = (42, 42) world pixels
+        player.body.setSize(80, 120);
+        player.body.setOffset(60, 60);
         formText.setText('Форма: Гоблин');
         formText.setStyle({ fill:'#99ff55', fontSize:'20px' });
         player.anims.play('goblin-idle', true);
     }
 
-    // body.reset(x, y) sets sprite position → body recalculates with new offsets
+    // Reset body with same foot position
     player.body.reset(player.x, footY);
     updateFormsBar();
 }
