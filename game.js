@@ -23,6 +23,29 @@ var playerHP = 3;
 var lastHit = 0;
 var goblinArrow = null;
 var goblinAbsorbed = false;
+var gameCamera = null;
+
+class GameCamera {
+    constructor(scene, target) {
+        this.scene = scene;
+        this.target = target;
+        this.cam = scene.cameras.main;
+        this.zoom = 1.8;
+        this.lerp = 0.14;
+        this.offsetY = -24;
+        this.cam.setBounds(0, 0, WORLD_W, WORLD_H);
+        this.cam.setZoom(this.zoom);
+        this.cam.setDeadzone(280, 160);
+        this.cam.startFollow(this.target, true, this.lerp, this.lerp, 0, this.offsetY);
+        this.cam.centerOn(this.target.x, this.target.y + this.offsetY);
+    }
+
+    update() {
+        if (!this.cam) return;
+        // Keep the built-in follow and bounds active.
+        // We call centerOn once in constructor for immediate starting view.
+    }
+}
 
 function makeCanvas(w, h, fn) {
     var c = document.createElement('canvas');
@@ -104,45 +127,69 @@ function create() {
         this.add.image(WORLD_W-16, wy+16, 'wall').setDepth(-1);
     }
 
-    // Stalactites
+    // Cave decorations
     buildStalactites(this);
+    buildStalagmites(this);
+    buildCaveVines(this);
+    buildWoodenShop(this);
+
+    var floorY = WORLD_H - 180;
+    var midY   = floorY - 130;
+    var highY  = floorY - 280;
+    var branchY = floorY - 220;
+    var branchEntryY = floorY - 130;
+
+    // Bottom floor fill — только одна полоса пола
+    this.add.rectangle(WORLD_W/2, floorY+16, WORLD_W-64, 32, 0x141321).setDepth(-3);
+    this.add.rectangle(WORLD_W/2, floorY+4, WORLD_W-64, 8, 0x22303d).setDepth(-2);
 
     // Ambient ground fog
-    var fog = this.add.graphics().setDepth(1).setAlpha(0.22);
-    fog.fillStyle(0x1a14a0, 1); fog.fillRect(32, WORLD_H-96, WORLD_W-64, 96);
-    fog.fillStyle(0x0e0c70, 1); fog.fillRect(32, WORLD_H-60, WORLD_W-64, 60);
+    var fog = this.add.graphics().setDepth(-2).setAlpha(0.18);
+    fog.fillStyle(0x09080f, 0.18); fog.fillRect(32, floorY + 24, WORLD_W-64, 64);
+    fog.fillStyle(0x140e2d, 0.12); fog.fillRect(32, floorY + 40, WORLD_W-64, 48);
 
     // ── platforms ─────────────────────────────────────────────────────────────
     platforms = this.physics.add.staticGroup();
+    traps = this.physics.add.staticGroup();
 
-    // Main floors — high up, plenty of space
-    var floorY = WORLD_H - 180;
-    
-    makeFloor(32,   950);          // Room 1 main floor
-    makeFloor(1100, 2050);         // Room 2 main floor
-    makeFloor(2300, 3200);         // Room 3 main floor
-    makeFloor(3500, 4768);         // Room 4 main floor (exit)
+    var rooms = [
+        { name:'СТАРТ',       x1: 32,   x2: 950,  y: floorY },
+        { name:'РАЗВИЛКА',    x1:1100, x2:1680, y: floorY },
+        { name:'ВЕТКА ВВЕРХ', x1:2050, x2:2360, y: branchY },
+        { name:'ПУТЬ ВПРАВО', x1:2050, x2:2660, y: floorY },
+        { name:'СХОЖДЕНИЕ',   x1:2700, x2:3300, y: floorY },
+        { name:'ФИНИШ',       x1:3300, x2:4768, y: floorY }
+    ];
+    rooms.forEach(function(room) { makeRoomFloor(this, room); }, this);
 
     // Mid platforms — optional challenge (130px above main floor)
-    var midY = floorY - 130;
-    makeShelf(200,  420,  midY);   // Room 1 mid
-    makeShelf(1200, 1480, midY);   // Room 2 mid-left
-    makeShelf(1800, 2000, midY);   // Room 2 mid-right
-    makeShelf(2450, 2700, midY);   // Room 3 mid
-    makeShelf(3650, 3900, midY);   // Room 4 mid
-    makeShelf(4150, 4400, midY);   // Room 4 far
+    makeShelf(200,  420,  midY);
+    makeShelf(1200, 1480, midY);
+    makeShelf(1800, 2000, midY);
+    makeShelf(2450, 2700, midY);
+    makeShelf(3650, 3900, midY);
+    makeShelf(4150, 4400, midY);
 
     // High platforms — goblin challenge (280px above main floor)
-    var highY = floorY - 280;
-    makeShelf(300,  550,  highY);  // Room 1 high
-    makeShelf(1300, 1400, highY);  // Room 2 high (narrow)
-    makeShelf(2550, 2750, highY);  // Room 3 high
-    makeShelf(3700, 3800, highY);  // Room 4 high (narrow)
+    makeShelf(300,  550,  highY);
+    makeShelf(1300, 1400, highY);
+    makeShelf(2550, 2750, highY);
+    makeShelf(3700, 3800, highY);
+
+    // Branch connector from fork to upper passage
+    makeShelf(1680, 1720, branchEntryY);
+    makeShelf(1740, 1800, floorY - 190);
+    makeShelf(1780, 1820, branchY);
+    makeShelf(2040, 2140, branchY);
+    makeShelf(2360, 2400, floorY - 120);
+
+    addBranchMarker(this, 1690, floorY - 78, 'Ветка вверх');
+    addBranchMarker(this, 2140, branchY - 48, 'Нижний путь');
 
     // Stepping stones over big gaps (at mid height)
-    makeShelf(950,  1050, midY);   // over gap 1 (950-1100)
-    makeShelf(2200, 2280, midY);   // over gap 2 (2050-2300)
-    makeShelf(3380, 3470, midY);   // over gap 3 (3200-3500)
+    makeShelf(950,  1050, midY);
+    makeShelf(2200, 2280, midY);
+    makeShelf(3380, 3470, midY);
 
     // ── spikes ────────────────────────────────────────────────────────────────
     traps = this.physics.add.staticGroup();
@@ -191,12 +238,12 @@ function create() {
 
     // ── PLAYER ────────────────────────────────────────────────────────────────────
     // origin(0.5, 1) → sprite.y = visual bottom.
-    player = this.physics.add.sprite(120, WORLD_H-32, 'slime_idle');
+    player = this.physics.add.sprite(120, floorY, 'slime_idle');
     player.setOrigin(0.5, 1);
     player.setScale(3);
     player.setBounce(0.05);
     player.setCollideWorldBounds(true);
-    player.setDragX(1400);
+    player.setDragX(1200);
     player.setDepth(5);
     player.body.setSize(24, 24);
     player.body.setOffset(4, 8);
@@ -205,7 +252,7 @@ function create() {
     this.physics.add.collider(player, platforms);
     this.physics.add.overlap(player, traps, onSpike, null, this);
 
-    this.cameras.main.startFollow(player, true, 0.09, 0.09);
+    gameCamera = new GameCamera(this, player);
 
     // ── UI ────────────────────────────────────────────────────────────────────
     formText = this.add.text(16, 16, 'Форма: Слизень', {
@@ -221,15 +268,15 @@ function create() {
     }).setScrollFactor(0).setDepth(20).setOrigin(0.5, 1);
 
     this.add.text(16, 72, 'A/D — движение   W/↑ — прыжок   E — поглотить   TAB — смена формы', {
-        fontSize:'11px', fill:'#667777', backgroundColor:'#00000077', padding:{x:6,y:3}
-    }).setScrollFactor(0).setDepth(20);
+        fontSize:'14px', fill:'#ffffff', backgroundColor:'#000000dd', padding:{x:8,y:5}, stroke:'#000000', strokeThickness:2
+    }).setScrollFactor(0).setDepth(30);
 
     hpText = this.add.text(GAME_W-16, 16, '♥ ♥ ♥', {
         fontSize:'22px', fill:'#ff4444', backgroundColor:'#00000099', padding:{x:8,y:4}
     }).setScrollFactor(0).setDepth(20).setOrigin(1, 0);
 
-    this.add.text(120, WORLD_H-55, '— СТАРТ —', { fontSize:'14px', fill:'#338833' }).setOrigin(0.5).setDepth(5);
-    this.add.text(4700, WORLD_H-55, '[ ВЫХОД ]', {
+    this.add.text(120, floorY - 54, '— СТАРТ —', { fontSize:'14px', fill:'#338833' }).setOrigin(0.5).setDepth(5);
+    this.add.text(4700, floorY - 54, '[ ВЫХОД ]', {
         fontSize:'22px', fill:'#ffcc00', backgroundColor:'#00000099', padding:{x:10,y:5}
     }).setOrigin(0.5).setDepth(5);
 
@@ -243,14 +290,53 @@ function create() {
 
 // ── level helpers ─────────────────────────────────────────────────────────────
 
-function makeFloor(x1, x2) {
-    for (var x = x1; x < x2; x += 32) platforms.create(x+16, WORLD_H-32, 'stone');
+function makeFloor(x1, x2, y) {
+    var floorY = (typeof y === 'number') ? y : WORLD_H - 32;
+    for (var x = x1; x < x2; x += 32) platforms.create(x+16, floorY, 'stone');
 }
 function makeShelf(x1, x2, yCenter) {
     for (var x = x1; x < x2; x += 32) platforms.create(x+16, yCenter, 'stone');
 }
 function spikeRow(x1, x2, y) {
     for (var x = x1; x < x2; x += 32) traps.create(x+16, y, 'spikes').refreshBody();
+}
+
+function makeFloorAt(x1, x2, y) {
+    makeFloor(x1, x2, y);
+}
+
+function makeRoomFloor(scene, room) {
+    makeFloorAt(room.x1, room.x2, room.y);
+    if (!room.label) return;
+    scene.add.text((room.x1 + room.x2) / 2, room.y - 72, room.label, {
+        fontSize:'14px', fill:'#ffe38a', backgroundColor:'#00000099', padding:{x:8,y:4}
+    }).setOrigin(0.5).setDepth(10);
+}
+
+function addBranchMarker(scene, x, y, text) {
+    var sign = scene.add.graphics().setDepth(10);
+    sign.fillStyle(0x2d1f42, 0.92);
+    sign.fillRoundedRect(x-46, y-18, 92, 36, 8);
+    sign.lineStyle(2, 0xffcf5d, 1);
+    sign.strokeRoundedRect(x-46, y-18, 92, 36, 8);
+    scene.add.text(x, y, text, { fontSize:'12px', fill:'#fff6c6', align:'center' })
+        .setOrigin(0.5).setDepth(11);
+    var arrow = scene.add.text(x, y + 22, '▼', { fontSize:'18px', fill:'#ffca5b' })
+        .setOrigin(0.5).setDepth(11);
+    scene.tweens.add({ targets: arrow, y: y + 24, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+}
+
+function updateVisibility(scene) {
+    if (!scene.cameras.main || !platforms || !traps) return;
+    var view = scene.cameras.main.worldView;
+    var margin = 96;
+    var rect = new Phaser.Geom.Rectangle(view.x - margin, view.y - margin, view.width + margin * 2, view.height + margin * 2);
+    [platforms, traps, deadMonstersGroup].forEach(function(group) {
+        if (!group) return;
+        group.getChildren().forEach(function(obj) {
+            obj.setVisible(Phaser.Geom.Rectangle.Overlaps(rect, obj.getBounds()));
+        });
+    });
 }
 
 // ── visual helpers ────────────────────────────────────────────────────────────
@@ -260,9 +346,17 @@ function buildBgPattern(scene) {
     var g = scene.add.graphics().setDepth(-6);
     for (var x = 32; x < WORLD_W-32; x += 64) {
         for (var y = 32; y < WORLD_H-32; y += 40) {
-            var shade = ((x + y) % 128 < 64) ? 0x0c0b18 : 0x0f0e1e;
+            var shade = ((x + y) % 128 < 64) ? 0x10101d : 0x141523;
             g.fillStyle(shade, 1);
             g.fillRect(x, y, 62, 38);
+            if (((x/64 + y/40) % 5) === 0) {
+                g.fillStyle(0x243a1d, 0.18);
+                g.fillRect(x + 10, y + 10, 16, 8);
+            }
+            if (((x/32 + y/20) % 7) === 0) {
+                g.fillStyle(0x2c4f21, 0.1);
+                g.fillCircle(x + 44, y + 26, 6);
+            }
         }
     }
 }
@@ -278,16 +372,93 @@ function buildStalactites(scene) {
     var g = scene.add.graphics().setDepth(-2);
     for (var i = 0; i < defs.length; i += 2) {
         var sx = defs[i], sh = defs[i+1];
-        // Main body
-        g.fillStyle(0x18162a, 1);
-        g.fillTriangle(sx-7, 32, sx+7, 32, sx, 32+sh);
-        // Lighter central strip
-        g.fillStyle(0x28244a, 1);
-        g.fillTriangle(sx-2, 32, sx+2, 32, sx, 32+sh);
-        // Water drip
-        g.fillStyle(0x2233aa, 0.6);
-        g.fillCircle(sx, 32+sh+3, 2.5);
+        g.fillStyle(0x1b1725, 1);
+        g.fillTriangle(sx-8, 32, sx+8, 32, sx, 32+sh);
+        g.fillStyle(0x2d2c44, 1);
+        g.fillTriangle(sx-3, 32, sx+3, 32, sx, 32+sh);
+        g.fillStyle(0x394b78, 0.55);
+        g.fillCircle(sx, 32+sh+2, 2.5);
+        g.fillStyle(0x0f1017, 0.16);
+        g.fillRect(sx-10, 32+sh-6, 20, 7);
     }
+}
+
+function buildStalagmites(scene) {
+    var defs = [
+        120,40, 260,58, 420,30, 640,50, 780,36,
+        940,48, 1120,38, 1280,56, 1460,44, 1640,30,
+        1820,54, 2000,42, 2180,60, 2360,34, 2540,48,
+        2720,38, 2900,62, 3080,40, 3260,50, 3440,34,
+        3620,58, 3800,46, 3980,36, 4160,60, 4340,42, 4520,32
+    ];
+    var g = scene.add.graphics().setDepth(-2);
+    var baseY = WORLD_H - 32;
+    for (var i = 0; i < defs.length; i += 2) {
+        var sx = defs[i], sh = defs[i+1];
+        g.fillStyle(0x141221, 1);
+        g.fillTriangle(sx-8, baseY, sx+8, baseY, sx, baseY-sh);
+        g.fillStyle(0x242441, 1);
+        g.fillTriangle(sx-3, baseY, sx+3, baseY, sx, baseY-sh);
+        g.fillStyle(0x2f4370, 0.48);
+        g.fillCircle(sx, baseY-sh+4, 2.5);
+    }
+}
+
+function buildCaveVines(scene) {
+    var vines = [
+        [140, 48, 90], [320, 42, 100], [540, 60, 82], [780, 38, 110], [1010, 52, 88],
+        [1620, 46, 94], [1980, 40, 98], [2360, 52, 84], [2740, 56, 92], [3120, 44, 80]
+    ];
+    vines.forEach(function(v) {
+        var x = v[0], y = v[1], len = v[2];
+        var g = scene.add.graphics().setDepth(-1);
+        g.lineStyle(2, 0x244924, 1);
+        for (var i = 0; i <= len; i += 6) {
+            var px = x + Math.sin(i * 0.18) * 3;
+            var py = y + i;
+            if (i === 0) g.moveTo(px, py);
+            else g.lineTo(px, py);
+        }
+        g.strokePath();
+        g.fillStyle(0x2f5e29, 0.45);
+        g.fillCircle(x, y + len - 6, 5);
+    });
+}
+
+function buildWoodenShop(scene) {
+    var shopX = 1750;
+    var shopY = WORLD_H - 420;
+    var shopW = 300;
+    var shopH = 180;
+    var g = scene.add.graphics().setDepth(-3);
+    g.fillStyle(0x3d2a18, 1);
+    g.fillRect(shopX, shopY, shopW, shopH);
+    g.fillStyle(0x5b3f25, 1);
+    g.fillRect(shopX + 10, shopY + 18, shopW - 20, 18);
+    g.fillRect(shopX + 10, shopY + shopH - 28, shopW - 20, 12);
+    g.fillStyle(0x4f3826, 1);
+    for (var px = shopX + 16; px < shopX + shopW - 16; px += 28) {
+        g.fillRect(px, shopY + 20, 16, shopH - 42);
+    }
+    var shelf = scene.add.graphics().setDepth(-2);
+    shelf.fillStyle(0x6b4d34, 1);
+    shelf.fillRect(shopX + 32, shopY + 42, 236, 10);
+    shelf.fillRect(shopX + 32, shopY + 74, 236, 10);
+    shelf.fillRect(shopX + 32, shopY + 106, 236, 10);
+    var coin = scene.add.graphics().setDepth(-1);
+    coin.fillStyle(0xffd04e, 1);
+    coin.fillCircle(shopX + 58, shopY + 30, 8);
+    coin.fillStyle(0xffffff, 0.8);
+    coin.fillRect(shopX + 54, shopY + 28, 8, 3);
+    var npc = scene.add.graphics().setDepth(-1);
+    npc.fillStyle(0x8f6f4b, 1);
+    npc.fillCircle(shopX + 72, shopY + shopH - 70, 18);
+    npc.fillStyle(0x513d2c, 1);
+    npc.fillRect(shopX + 66, shopY + shopH - 54, 12, 28);
+    var item = scene.add.graphics().setDepth(-1);
+    item.fillStyle(0xc0a67f, 1); item.fillRect(shopX + 146, shopY + 44, 22, 12);
+    item.fillStyle(0xdddddd, 1); item.fillRect(shopX + 204, shopY + 44, 38, 8);
+    item.fillStyle(0x3f2c21, 1); item.fillRect(shopX + 248, shopY + 54, 24, 10);
 }
 
 function addTorch(scene, x, y) {
@@ -468,8 +639,8 @@ function performAbsorb(scene, dead) {
 // ── update ────────────────────────────────────────────────────────────────────
 function update() {
     var onGround = player.body.blocked.down;
-    var speed    = playerForm === 'slime' ? 200 : 360;
-    var jumpVel  = playerForm === 'slime' ? -430 : -720;
+    var speed    = playerForm === 'slime' ? 220 : 360;
+    var jumpVel  = playerForm === 'slime' ? -520 : -760;
     var moving   = false;
 
     if (!absorbAnimating) {
@@ -486,6 +657,9 @@ function update() {
             player.anims.play(vx > 200 ? 'goblin-run' : vx > 20 ? 'goblin-walk' : 'goblin-idle', true);
         }
     }
+
+    if (gameCamera) gameCamera.update();
+    updateVisibility(this);
 
     if (Phaser.Input.Keyboard.JustDown(tabKey) && absorbedForms.length && !absorbAnimating) cycleForm.call(this);
 
