@@ -231,10 +231,13 @@ function create() {
         drawBones(this, bx, WORLD_H-32);
     }, this);
 
-    // ── dead goblin ───────────────────────────────────────────────────────────
+    // ── enemy and transform targets ───────────────────────────────────────────────
     deadMonstersGroup = this.physics.add.staticGroup();
-    spawnDeadGoblin(this);
     liveMonsters = this.physics.add.group();
+    this.physics.add.collider(liveMonsters, platforms);
+    this.physics.add.collider(liveMonsters, traps, function(enemy) {
+        enemy.setVelocityX(0);
+    });
 
     // ── PLAYER ────────────────────────────────────────────────────────────────────
     // origin(0.5, 1) → sprite.y = visual bottom.
@@ -250,7 +253,11 @@ function create() {
     player.anims.play('slime-idle');
 
     this.physics.add.collider(player, platforms);
+    this.physics.add.collider(player, liveMonsters, function() {}, null, this);
     this.physics.add.overlap(player, traps, onSpike, null, this);
+
+    spawnGoblinFormTarget(this, 560, floorY);
+    spawnGoblinHunter(this, 3700, floorY);
 
     gameCamera = new GameCamera(this, player);
 
@@ -519,6 +526,8 @@ function spawnDeadGoblin(scene) {
     dg.setScale(0.65);
     dg.setFlipX(true);
     dg.setData('monsterType', 'goblin');
+    dg.setActive(true);
+    dg.setVisible(true);
     dg.refreshBody();
 
     if (!goblinArrow) {
@@ -528,6 +537,8 @@ function spawnDeadGoblin(scene) {
         scene.tweens.add({ targets:goblinArrow, y:WORLD_H-215, duration:450, yoyo:true, repeat:-1, ease:'Sine.easeInOut' });
     }
 }
+
+// enemy logic moved to enemies.js
 
 function updateHpDisplay() {
     hpText.setText(('♥ '.repeat(Math.max(playerHP,0)) + '♡ '.repeat(Math.max(3-playerHP,0))).trim());
@@ -663,18 +674,33 @@ function update() {
 
     if (Phaser.Input.Keyboard.JustDown(tabKey) && absorbedForms.length && !absorbAnimating) cycleForm.call(this);
 
-    var nearDead = null, nearDist = 100;
+    var nearDead = null, nearDist = 180;
     deadMonstersGroup.getChildren().forEach(function(d) {
-        if (!d.active) return;
+        if (!d.active || !d.visible) return;
         var dist = Phaser.Math.Distance.Between(player.x, player.y, d.x, d.y);
-        if (dist < nearDist) { nearDist = dist; nearDead = d; }
+        if (dist <= nearDist) { nearDist = dist; nearDead = d; }
     });
 
-    if (nearDead && !absorbAnimating) {
+    var nearEnemy = updateEnemies(this);
+
+    var canBecomeGoblin = nearEnemy && nearEnemy.getData('isFormTarget') && playerForm === 'slime';
+    var canAttackEnemy = nearEnemy && !nearEnemy.getData('isFormTarget');
+
+    if (canBecomeGoblin && !absorbAnimating) {
+        hintText.setText('[ E ] — Стать гоблином');
+    } else if (canAttackEnemy && !absorbAnimating) {
+        hintText.setText('[ E ] — Ударить врага');
+    } else if (nearDead && !absorbAnimating) {
         hintText.setText('[ E ] — Поглотить ' + nearDead.getData('monsterType'));
     } else if (!absorbAnimating && hintText.text.startsWith('[ E ]')) {
         hintText.setText('');
     }
 
-    if (Phaser.Input.Keyboard.JustDown(eKey) && nearDead && !absorbAnimating) performAbsorb(this, nearDead);
+    if (Phaser.Input.Keyboard.JustDown(eKey) && canBecomeGoblin && !absorbAnimating) {
+        becomeGoblin(this, nearEnemy);
+    } else if (Phaser.Input.Keyboard.JustDown(eKey) && canAttackEnemy && !absorbAnimating) {
+        attackEnemy(this, nearEnemy);
+    } else if (Phaser.Input.Keyboard.JustDown(eKey) && nearDead && !absorbAnimating) {
+        performAbsorb(this, nearDead);
+    }
 }
