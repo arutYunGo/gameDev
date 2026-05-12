@@ -7,7 +7,7 @@ function spawnGoblinHunter(scene, x, y) {
     enemy.setBounce(0.02);
     enemy.body.setSize(80, 120);
     enemy.body.setOffset(60, 60);
-    enemy.setData('hp', 4);
+    enemy.setData('hp', 2);
     enemy.setData('lastAttack', 0);
     enemy.setData('monsterType', 'goblin');
     enemy.anims.play('goblin-idle', true);
@@ -15,20 +15,17 @@ function spawnGoblinHunter(scene, x, y) {
 }
 
 function spawnGoblinFormTarget(scene, x, y) {
-    var target = liveMonsters.create(x, y, 'goblin_idle');
+    var target = scene.add.image(x, y, 'goblin_dead_img');
     target.setOrigin(0.5, 1);
-    target.setScale(0.7);
+    target.setScale(0.65);
     target.setDepth(5);
-    target.setCollideWorldBounds(true);
-    target.body.setSize(80, 120);
-    target.body.setOffset(60, 60);
+    scene.physics.add.existing(target, true);
+    target.body.setSize(96, 56);
+    target.body.setOffset(0, 0);
     target.setData('hp', 999);
     target.setData('monsterType', 'goblin');
     target.setData('isFormTarget', true);
-    target.setImmovable(true);
-    target.body.allowGravity = true;
-    target.body.moves = false;
-    target.anims.play('goblin-idle', true);
+    target.setTint(0x99ff99);
 
     goblinArrow = scene.add.text(x, y - 190, '▼', {
         fontSize: '26px', fill: '#44ff66'
@@ -85,7 +82,7 @@ function attackEnemy(scene, enemy) {
 
 function updateEnemies(scene) {
     var nearEnemy = null;
-    var nearest = 120;
+    var nearest = 180;
 
     liveMonsters.getChildren().forEach(function(enemy) {
         if (!enemy.active) return;
@@ -97,8 +94,6 @@ function updateEnemies(scene) {
         }
 
         if (enemy.getData('isFormTarget')) {
-            enemy.setVelocityX(0);
-            enemy.anims.play('goblin-idle', true);
             return;
         }
 

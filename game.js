@@ -19,10 +19,12 @@ var playerForm = 'slime';
 var absorbedForms = [];
 var formText, hintText, hpText, formsBar;
 var absorbAnimating = false;
-var playerHP = 3;
+var playerMaxHP = 5;
+var playerHP = playerMaxHP;
 var lastHit = 0;
 var goblinArrow = null;
 var goblinAbsorbed = false;
+var goblinFormTarget = null;
 var gameCamera = null;
 
 class GameCamera {
@@ -256,7 +258,7 @@ function create() {
     this.physics.add.collider(player, liveMonsters, function() {}, null, this);
     this.physics.add.overlap(player, traps, onSpike, null, this);
 
-    spawnGoblinFormTarget(this, 560, floorY);
+    goblinFormTarget = spawnGoblinFormTarget(this, 560, floorY);
     spawnGoblinHunter(this, 3700, floorY);
 
     gameCamera = new GameCamera(this, player);
@@ -541,7 +543,7 @@ function spawnDeadGoblin(scene) {
 // enemy logic moved to enemies.js
 
 function updateHpDisplay() {
-    hpText.setText(('♥ '.repeat(Math.max(playerHP,0)) + '♡ '.repeat(Math.max(3-playerHP,0))).trim());
+    hpText.setText(('♥ '.repeat(Math.max(playerHP,0)) + '♡ '.repeat(Math.max(playerMaxHP-playerHP,0))).trim());
 }
 function updateFormsBar() {
     if (!absorbedForms.length) { formsBar.setText(''); return; }
@@ -567,7 +569,7 @@ function onSpike(p, spike) {
 }
 
 function respawn() {
-    playerHP = 3;
+    playerHP = playerMaxHP;
     updateHpDisplay();
     // origin(0.5,1) → y = visual bottom = floor top
     player.setPosition(120, WORLD_H-32);
@@ -682,8 +684,13 @@ function update() {
     });
 
     var nearEnemy = updateEnemies(this);
+    var nearFormTarget = null;
+    if (goblinFormTarget && goblinFormTarget.active) {
+        var dist = Phaser.Math.Distance.Between(player.x, player.y, goblinFormTarget.x, goblinFormTarget.y);
+        if (dist <= 160) nearFormTarget = goblinFormTarget;
+    }
 
-    var canBecomeGoblin = nearEnemy && nearEnemy.getData('isFormTarget') && playerForm === 'slime';
+    var canBecomeGoblin = nearFormTarget && playerForm === 'slime';
     var canAttackEnemy = nearEnemy && !nearEnemy.getData('isFormTarget');
 
     if (canBecomeGoblin && !absorbAnimating) {
@@ -697,7 +704,7 @@ function update() {
     }
 
     if (Phaser.Input.Keyboard.JustDown(eKey) && canBecomeGoblin && !absorbAnimating) {
-        becomeGoblin(this, nearEnemy);
+        becomeGoblin(this, nearFormTarget);
     } else if (Phaser.Input.Keyboard.JustDown(eKey) && canAttackEnemy && !absorbAnimating) {
         attackEnemy(this, nearEnemy);
     } else if (Phaser.Input.Keyboard.JustDown(eKey) && nearDead && !absorbAnimating) {
