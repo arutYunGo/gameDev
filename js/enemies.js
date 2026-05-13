@@ -10,6 +10,7 @@ function spawnGoblinHunter(scene, x, y) {
     enemy.setData('hp', 2);
     enemy.setData('lastAttack', 0);
     enemy.setData('monsterType', 'goblin');
+    enemy.setTint(0xdd3333);
     enemy.anims.play('goblin-idle', true);
     return enemy;
 }
@@ -101,7 +102,7 @@ function attackEnemy(scene, enemy) {
         if (!enemy || !enemy.active) return;
         enemy.setTint(0xff4444);
     });
-    scene.time.delayedCall(220, function() { if (enemy && enemy.clearTint) enemy.clearTint(); });
+    scene.time.delayedCall(220, function() { if (enemy && enemy.active) enemy.setTint(0xdd3333); });
     if (hp <= 0) {
         spawnDeathParticles(scene, enemy.x, enemy.y, 0x88ff44);
         enemy.destroy();

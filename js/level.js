@@ -78,12 +78,19 @@ function create() {
     player.body.setSize(24, 24).setOffset(4, 8);
     player.anims.play('slime-idle');
 
+    playerMarker = this.add.text(player.x, player.y, '▼', {
+        fontSize: '20px', fill: '#44ff88',
+        stroke: '#003300', strokeThickness: 4
+    }).setOrigin(0.5, 1).setDepth(10);
+
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(player, liveMonsters, function() {}, null, this);
     this.physics.add.overlap(player, traps, onSpike, null, this);
 
     goblinFormTarget = spawnGoblinFormTarget(this, 560, floorTop);
     spawnGoblinHunter(this, mapWidth - 600, floorTop);
+    spawnGoblinHunter(this, mapWidth - 900, floorTop);
+    spawnGoblinHunter(this, mapWidth - 300, floorTop);
 
     gameCamera = new GameCamera(this, player);
 
@@ -119,5 +126,6 @@ function create() {
     wKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     aKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
     dKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-    tabKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
+    tabKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
+    spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 }

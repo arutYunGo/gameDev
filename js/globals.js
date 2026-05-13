@@ -8,7 +8,8 @@ const FLOOR_Y   = WORLD_H - 180;  // y-center of main floor tiles
 
 // ── global state ──────────────────────────────────────────────────────────────
 var player, platforms, deadMonstersGroup, liveMonsters, traps;
-var cursors, eKey, wKey, aKey, dKey, tabKey;
+var playerMarker = null;
+var cursors, eKey, wKey, aKey, dKey, tabKey, spaceKey;
 var playerForm = 'slime';
 var absorbedForms = [];
 var formText, hintText, hpBar, formsBar, tabHint;

@@ -1,11 +1,12 @@
 // ── animations ────────────────────────────────────────────────────────────────
 function createAnims(scene) {
-    scene.anims.create({ key:'slime-idle',   frames: scene.anims.generateFrameNumbers('slime_idle',   {start:0,end:3}),  frameRate:6,  repeat:-1 });
-    scene.anims.create({ key:'slime-run',    frames: scene.anims.generateFrameNumbers('slime_run',    {start:0,end:5}),  frameRate:10, repeat:-1 });
-    scene.anims.create({ key:'goblin-idle',  frames: scene.anims.generateFrameNumbers('goblin_idle',  {start:0,end:8}),  frameRate:8,  repeat:-1 });
-    scene.anims.create({ key:'goblin-walk',  frames: scene.anims.generateFrameNumbers('goblin_walk',  {start:0,end:8}),  frameRate:10, repeat:-1 });
-    scene.anims.create({ key:'goblin-run',   frames: scene.anims.generateFrameNumbers('goblin_run',   {start:0,end:8}),  frameRate:12, repeat:-1 });
-    scene.anims.create({ key:'goblin-attack',frames: scene.anims.generateFrameNumbers('goblin_attack',{start:0,end:10}), frameRate:14, repeat:0  });
+    var a = scene.anims;
+    if (!a.exists('slime-idle'))    a.create({ key:'slime-idle',    frames: a.generateFrameNumbers('slime_idle',   {start:0,end:3}),  frameRate:6,  repeat:-1 });
+    if (!a.exists('slime-run'))     a.create({ key:'slime-run',     frames: a.generateFrameNumbers('slime_run',    {start:0,end:5}),  frameRate:10, repeat:-1 });
+    if (!a.exists('goblin-idle'))   a.create({ key:'goblin-idle',   frames: a.generateFrameNumbers('goblin_idle',  {start:0,end:8}),  frameRate:8,  repeat:-1 });
+    if (!a.exists('goblin-walk'))   a.create({ key:'goblin-walk',   frames: a.generateFrameNumbers('goblin_walk',  {start:0,end:8}),  frameRate:10, repeat:-1 });
+    if (!a.exists('goblin-run'))    a.create({ key:'goblin-run',    frames: a.generateFrameNumbers('goblin_run',   {start:0,end:8}),  frameRate:12, repeat:-1 });
+    if (!a.exists('goblin-attack')) a.create({ key:'goblin-attack', frames: a.generateFrameNumbers('goblin_attack',{start:0,end:10}), frameRate:14, repeat:0  });
 }
 
 // ── preload (Phaser scene entry point) ────────────────────────────────────────
@@ -124,14 +125,17 @@ function onSpike(p, spike) {
 }
 
 function respawn() {
-    playerHP = playerMaxHP;
-    updateHpDisplay();
-    // Spawn above floor (FLOOR_Y is tile centre; tile top = FLOOR_Y-16)
-    player.setPosition(120, WORLD_H - 64);
-    player.setVelocity(0, 0);
-    applyForm.call(this, 'slime');
-    hintText.setText('Погибли. Формы сохранены — TAB для переключения.');
-    this.time.delayedCall(2500, function() { hintText.setText(''); });
+    playerHP       = playerMaxHP;
+    lastHit        = 0;
+    playerForm     = 'slime';
+    absorbedForms  = [];
+    goblinAbsorbed = false;
+    goblinFormTarget = null;
+    playerMarker   = null;
+    abilityHudShown = false;
+    ePlate  = null;
+    tabPlate = null;
+    this.scene.restart();
 }
 
 // ── attack ────────────────────────────────────────────────────────────────────
@@ -193,6 +197,11 @@ function update() {
         }
     }
 
+    if (playerMarker) {
+        var bob = Math.sin(this.time.now / 280) * 5;
+        playerMarker.setPosition(player.x, player.y - player.displayHeight - 6 + bob);
+    }
+
     if (gameCamera) gameCamera.update();
     updateVisibility(this);
 
@@ -232,10 +241,11 @@ function update() {
         }
     }
 
-    var eDown = Phaser.Input.Keyboard.JustDown(eKey);
+    var eDown     = Phaser.Input.Keyboard.JustDown(eKey);
+    var spaceDown = Phaser.Input.Keyboard.JustDown(spaceKey);
     if (eDown && canBecomeGoblin && !absorbAnimating) {
         becomeGoblin(this, nearFormTarget);
-    } else if (eDown && canGoblinAttack && !absorbAnimating && !playerAttacking) {
+    } else if ((eDown || spaceDown) && canGoblinAttack && !absorbAnimating && !playerAttacking) {
         playerAttack(this, nearEnemy);
     } else if (eDown && nearDead && !absorbAnimating) {
         performAbsorb(this, nearDead);
