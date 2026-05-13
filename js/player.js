@@ -59,16 +59,18 @@ function applyForm(type) {
     player.setFlipX(false);
 
     if (type === 'slime') {
-        player.setTexture('slime_idle').setOrigin(0.5, 1).setScale(3);
+        player.setTexture('slime_idle').setOrigin(0.5, 1).setScale(2.4);
         player.body.setSize(24, 24).setOffset(4, 8);
+        player.setDragX(420); // slippery
         formText.setText('Форма: Слизень');
-        formText.setStyle({ fill:'#44ff66', fontSize:'20px' });
+        formText.setStyle({ fill:'#44ff66', fontSize: Math.round(14 / CAM_ZOOM) + 'px' });
         player.anims.play('slime-idle', true);
     } else if (type === 'goblin') {
         player.setTexture('goblin_idle').setOrigin(0.5, 1).setScale(0.7);
         player.body.setSize(80, 120).setOffset(60, 60);
+        player.setDragX(1100);
         formText.setText('Форма: Гоблин');
-        formText.setStyle({ fill:'#99ff55', fontSize:'20px' });
+        formText.setStyle({ fill:'#99ff55', fontSize: Math.round(14 / CAM_ZOOM) + 'px' });
         player.anims.play('goblin-idle', true);
     }
 
@@ -84,6 +86,10 @@ function cycleForm() {
 function performAbsorb(scene, dead) {
     absorbAnimating = true;
     hintText.setText('Поглощение...');
+    // Impact: camera shake + hitstop
+    scene.cameras.main.shake(120, 0.018);
+    scene.physics.world.pause();
+    scene.time.delayedCall(160, function() { scene.physics.world.resume(); });
     var s = player.scaleX;
     scene.tweens.add({
         targets: player, scaleX: s * 1.7, scaleY: s * 1.7, duration: 200, yoyo: true,
@@ -120,7 +126,8 @@ function onSpike(p, spike) {
 function respawn() {
     playerHP = playerMaxHP;
     updateHpDisplay();
-    player.setPosition(120, WORLD_H - 32);
+    // Spawn above floor (FLOOR_Y is tile centre; tile top = FLOOR_Y-16)
+    player.setPosition(120, WORLD_H - 64);
     player.setVelocity(0, 0);
     applyForm.call(this, 'slime');
     hintText.setText('Погибли. Формы сохранены — TAB для переключения.');
@@ -157,10 +164,24 @@ function update() {
     var jumpVel  = playerForm === 'slime' ? -520 : -760;
     var moving   = false;
 
+    if (onGround) canWallJump = true;
+
     if (!absorbAnimating) {
         if (cursors.left.isDown  || aKey.isDown) { player.setVelocityX(-speed); player.setFlipX(true);  moving = true; }
         else if (cursors.right.isDown || dKey.isDown) { player.setVelocityX(speed); player.setFlipX(false); moving = true; }
         if ((cursors.up.isDown || wKey.isDown) && onGround) player.setVelocityY(jumpVel);
+
+        // Wall jump — slime only, single use per air time
+        if (playerForm === 'slime' && !onGround && canWallJump) {
+            var jumpJustDown = Phaser.Input.Keyboard.JustDown(cursors.up) || Phaser.Input.Keyboard.JustDown(wKey);
+            var onWallLeft   = player.body.blocked.left;
+            var onWallRight  = player.body.blocked.right;
+            if (jumpJustDown && (onWallLeft || onWallRight)) {
+                player.setVelocityY(-500);
+                player.setVelocityX(onWallLeft ? 300 : -300);
+                canWallJump = false;
+            }
+        }
     }
 
     if (!absorbAnimating && !playerAttacking) {

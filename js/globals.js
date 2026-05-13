@@ -3,7 +3,8 @@ const WORLD_W = 4800;
 const WORLD_H = 900;
 const GAME_W  = Math.round(900 * (window.innerWidth / window.innerHeight));
 const GAME_H  = 900;
-const CAM_ZOOM = 1.8; // must match GameCamera.zoom
+const CAM_ZOOM  = 1.8;             // must match GameCamera.zoom
+const FLOOR_Y   = WORLD_H - 180;  // y-center of main floor tiles
 
 // ── global state ──────────────────────────────────────────────────────────────
 var player, platforms, deadMonstersGroup, liveMonsters, traps;
@@ -12,8 +13,9 @@ var playerForm = 'slime';
 var absorbedForms = [];
 var formText, hintText, hpBar, formsBar, tabHint;
 var ePlate = null, tabPlate = null, abilityHudShown = false;
-var absorbAnimating = false;
+var absorbAnimating  = false;
 var playerAttacking  = false;
+var canWallJump      = true;
 var playerMaxHP = 5;
 var playerHP    = playerMaxHP;
 var lastHit     = 0;

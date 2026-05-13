@@ -55,8 +55,9 @@ function hurtPlayer(scene, sourceX) {
     lastHit = now;
     playerHP--;
     updateHpDisplay();
-    // Red flash
-    player.setTint(0xff3333);
+    // White flash → red
+    player.setTint(0xffffff);
+    scene.time.delayedCall(60, function() { if (player) player.setTint(0xff3333); });
     scene.time.delayedCall(220, function() { if (player) player.clearTint(); });
     // Knockback away from source
     player.setVelocityY(-300);
@@ -65,18 +66,44 @@ function hurtPlayer(scene, sourceX) {
     if (playerHP <= 0) respawn.call(scene);
 }
 
+function spawnDeathParticles(scene, x, y, color) {
+    for (var i = 0; i < 5; i++) {
+        var angle = (Math.PI * 2 / 5) * i + Math.random() * 0.5;
+        var speed = 120 + Math.random() * 160;
+        var px = x, py = y - 20;
+        var tx = px + Math.cos(angle) * speed * 0.35;
+        var ty = py + Math.sin(angle) * speed * 0.35 + 60;
+        var sq = scene.add.rectangle(px, py, 7, 7, color).setDepth(10);
+        scene.tweens.add({
+            targets: sq,
+            x: tx, y: ty,
+            alpha: 0, scaleX: 0.1, scaleY: 0.1,
+            duration: 320 + Math.random() * 180,
+            ease: 'Quad.easeOut',
+            // tween.targets[0] avoids the var-in-loop closure bug where all
+            // 5 onComplete callbacks would share the same (last) `sq` reference.
+            onComplete: function(tween) { tween.targets[0].destroy(); }
+        });
+    }
+}
+
 function attackEnemy(scene, enemy) {
     if (!enemy || !enemy.active) return;
     var hp = enemy.getData('hp') - 1;
     enemy.setData('hp', hp);
-    // Knockback enemy away from player
     var kbDir = enemy.x >= player.x ? 1 : -1;
     enemy.setVelocityX(340 * kbDir);
     enemy.setVelocityY(-220);
-    scene.cameras.main.shake(60, 0.012);
-    enemy.setTint(0xff3333);
-    scene.time.delayedCall(200, function() { if (enemy && enemy.clearTint) enemy.clearTint(); });
+    scene.cameras.main.shake(55, 0.012);
+    // White flash on hit
+    enemy.setTint(0xffffff);
+    scene.time.delayedCall(80, function() {
+        if (!enemy || !enemy.active) return;
+        enemy.setTint(0xff4444);
+    });
+    scene.time.delayedCall(220, function() { if (enemy && enemy.clearTint) enemy.clearTint(); });
     if (hp <= 0) {
+        spawnDeathParticles(scene, enemy.x, enemy.y, 0x88ff44);
         enemy.destroy();
         hintText.setText('Враг повержен!');
         scene.time.delayedCall(1400, function() {
