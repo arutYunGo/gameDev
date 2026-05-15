@@ -165,7 +165,7 @@ function playerAttack(scene, enemy) {
 function update() {
     var onGround = player.body.blocked.down;
     var speed    = playerForm === 'slime' ? 220 : 360;
-    var jumpVel  = playerForm === 'slime' ? -520 : -760;
+    var jumpVel  = playerForm === 'slime' ? -520 : -620;
     var moving   = false;
 
     if (onGround) canWallJump = true;
