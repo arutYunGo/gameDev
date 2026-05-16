@@ -1,10 +1,10 @@
 // ── world & game constants ────────────────────────────────────────────────────
-const WORLD_W = 4800;
+const WORLD_W = 1200;
 const WORLD_H = 900;
-const GAME_W  = Math.round(900 * (window.innerWidth / window.innerHeight));
+const GAME_W  = 1200;
 const GAME_H  = 900;
-const CAM_ZOOM  = 1.8;             // must match GameCamera.zoom
-const FLOOR_Y   = WORLD_H - 180;  // y-center of main floor tiles
+const CAM_ZOOM  = 1;             // No zoom needed for single screen
+const FLOOR_Y   = 880;  // Match the new bottom floor y
 
 // ── global state ──────────────────────────────────────────────────────────────
 var player, platforms, deadMonstersGroup, liveMonsters, traps;
