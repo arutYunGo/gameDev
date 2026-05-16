@@ -72,11 +72,12 @@ function create() {
     var plat3Y = levelH * 0.25 - platH / 2;
     createPlatform.call(this, plat3X, plat3Y, platW, platH, greenColor);
 
-    // Спавн игрока в начале уровня на главном полу
+        // Спавн игрока в начале уровня на главном полу
     this.player = this.physics.add.sprite(80, levelH - floorHeight - 24, 'slime_idle');
     player = this.player; // для совместимости с остальным кодом
     this.player.setOrigin(0.5, 1).setScale(3).setBounce(0.05).setCollideWorldBounds(false).setDragX(420).setDepth(5);
-    this.player.body.setSize(24, 24).setOffset(4, 8);
+        // Adjusting hitbox: slime is centered in 32x32, usually sits a bit higher than the bottom pixel.
+    this.player.body.setSize(20, 10).setOffset(6, 18);
     this.player.anims.play('slime-idle');
 
     // Коллайдер между игроком и платформами

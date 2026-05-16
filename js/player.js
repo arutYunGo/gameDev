@@ -62,10 +62,19 @@ function applyForm(type) {
     playerForm = type;
     player.setFlipX(false);
 
-    if (type === 'slime') {
-        player.setTexture('slime_idle').setOrigin(0.5, 1).setScale(2.4);
-        player.body.setSize(24, 24).setOffset(4, 8);
-        player.setDragX(420); // slippery
+
+
+
+
+
+
+        if (type === 'slime') {
+            player.setTexture('slime_idle').setOrigin(0.5, 1).setScale(2.4);
+            // Making the hitbox very thin and pushing it slightly BEYOND the 32px frame
+            // to compensate for empty space in the sprite.
+            player.body.setSize(20, 6);
+            player.body.setOffset(6, 28);
+            player.setDragX(420); // slippery
         formText.setText('Форма: Слизень');
         formText.setStyle({ fill:'#44ff66', fontSize: Math.round(14 / CAM_ZOOM) + 'px' });
         player.anims.play('slime-idle', true);
