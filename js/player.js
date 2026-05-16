@@ -11,6 +11,9 @@ function createAnims(scene) {
 
 // ── preload (Phaser scene entry point) ────────────────────────────────────────
 function preload() {
+    console.log('[GAME] preload() start');
+    // Removed Tiled map/tileset loading — level now generated procedurally
+
     this.load.spritesheet('slime_idle',    'sptrites/FreeSlime/slime_idle.png', { frameWidth:32,  frameHeight:32  });
     this.load.spritesheet('slime_run',     'sptrites/FreeSlime/slime_run.png',  { frameWidth:32,  frameHeight:32  });
     this.load.spritesheet('goblin_idle',   'sptrites/free/free/idle.png',       { frameWidth:200, frameHeight:200 });
@@ -163,6 +166,11 @@ function playerAttack(scene, enemy) {
 
 // ── update (Phaser scene entry point) ─────────────────────────────────────────
 function update() {
+    // trace every few seconds to ensure update runs
+    if (Math.floor(this.time.now / 2000) % 5 === 0 && this._lastTrace !== Math.floor(this.time.now / 2000)) {
+        this._lastTrace = Math.floor(this.time.now / 2000);
+        console.log('[GAME] update tick, player exists?', !!player);
+    }
     var onGround = player.body.blocked.down;
     var speed    = playerForm === 'slime' ? 220 : 360;
     var jumpVel  = playerForm === 'slime' ? -520 : -620;

@@ -34,7 +34,7 @@ class GameCamera {
         this.zoom   = CAM_ZOOM;
         this.lerp   = 0.14;
         this.offsetY = -24;
-        this.cam.setBounds(0, 0, WORLD_W, WORLD_H);
+        // Bounds are set in level.js create() based on map dimensions
         this.cam.setZoom(this.zoom);
         this.cam.setDeadzone(280, 160);
         this.cam.startFollow(this.target, true, this.lerp, this.lerp, 0, this.offsetY);

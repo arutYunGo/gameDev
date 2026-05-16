@@ -1,131 +1,113 @@
-// ── platform helpers ──────────────────────────────────────────────────────────
-function makeFloor(x1, x2, y) {
-    var fy = (typeof y === 'number') ? y : WORLD_H - 32;
-        for (var x = x1; x < x2; x += 64) {
-            platforms.create(x + 32, fy, 'stone')
-                .setDisplaySize(64, 64)
-                .refreshBody();
-        }
-}
-function makeFloorAt(x1, x2, y) { makeFloor(x1, x2, y); }
-function makeShelf(x1, x2, yCenter) {
-    for (var x = x1; x < x2; x += 64) {
-        platforms.create(x + 32, yCenter, 'stone')
-            .setDisplaySize(64, 64)
-            .refreshBody();
-    }
-}
-function spikeRow(x1, x2, y) {
-    for (var x = x1; x < x2; x += 32) traps.create(x + 16, y, 'spikes').refreshBody();
-}
-function makeRoomFloor(scene, room) { makeFloorAt(room.x1, room.x2, room.y); }
-function addBranchMarker() {}   // no in-world labels
+// Простая сцена уровня: генерируем геометрию напрямую по эскизу (дизайн 1400x900)
 
-// ── visibility culling ────────────────────────────────────────────────────────
+// Небольшая заглушка для совместимости — оригинальный проект использовал
+// updateVisibility(scene) для видимости объектов. Здесь она безопасно ничего не делает.
 function updateVisibility(scene) {
-    if (!scene.cameras.main || !platforms || !traps) return;
-    var view   = scene.cameras.main.worldView;
-    var margin = 96;
-    var rect   = new Phaser.Geom.Rectangle(view.x - margin, view.y - margin, view.width + margin * 2, view.height + margin * 2);
-    [platforms, traps, deadMonstersGroup].forEach(function(group) {
-        if (!group) return;
-        group.getChildren().forEach(function(obj) {
-            obj.setVisible(Phaser.Geom.Rectangle.Overlaps(rect, obj.getBounds()));
-        });
-    });
+    if (!scene || !scene.cameras) return;
 }
-
-// ── dead monster corpse ───────────────────────────────────────────────────────
-function spawnDeadGoblin() {
-    if (goblinAbsorbed) return;
-    var dg = deadMonstersGroup.create(560, WORLD_H - 64, 'goblin_dead_img');
-    dg.setOrigin(0.5, 1).setScale(0.65).setFlipX(true);
-    dg.setData('monsterType', 'goblin');
-    dg.setActive(true).setVisible(true).refreshBody();
-}
-
-// ── create (Phaser scene entry point) ─────────────────────────────────────────
 function create() {
+    console.log('[GAME] create() start');
     createAnims(this);
-    var mapWidth = WORLD_W / 2;
-    var floorY = WORLD_H - 32;
-    var floorTop = floorY - 32;
 
-    this.cameras.main.setBounds(0, 0, mapWidth, WORLD_H);
-    this.physics.world.setBounds(0, 0, mapWidth, WORLD_H);
+    var w = this.scale.width;
+    var h = this.scale.height;
+    var levelW = w * 2;
+    var levelH = h;
 
-    // Background
-    this.add.rectangle(mapWidth / 2, WORLD_H / 2, mapWidth, WORLD_H, 0x060610).setDepth(-10);
-    for (var cx = 0; cx < mapWidth; cx += 32) this.add.image(cx + 16, 16, 'stone').setFlipY(true).setDepth(-1);
-    for (var wy = 0; wy < WORLD_H; wy += 32) {
-        this.add.image(16, wy + 16, 'wall').setDepth(-1);
-        this.add.image(mapWidth - 16, wy + 16, 'wall').setDepth(-1);
+    this.cameras.main.setBounds(0, 0, levelW, levelH);
+    this.physics.world.setBounds(0, 0, levelW, levelH * 2); // Allow falling below screen
+
+    // фон
+    this.add.rectangle(levelW / 2, levelH / 2, levelW, levelH, 0x333333).setDepth(-10);
+
+    // группа статических платформ
+    platforms = this.physics.add.staticGroup();
+    // Создаём пустые группы, чтобы существующие вызовы update() не падали
+    deadMonstersGroup = this.physics.add.staticGroup();
+    liveMonsters = this.physics.add.group();
+    traps = this.physics.add.staticGroup();
+
+    // createPlatform(x, y, width, height, color) - using top-left origin to fix floor bugs
+    function createPlatform(x, y, width, height, color) {
+        var rect = this.add.rectangle(x, y, width, height, color).setOrigin(0, 0);
+        this.physics.add.existing(rect, true);
+        platforms.add(rect);
+        return rect;
     }
 
-    platforms = this.physics.add.staticGroup();
-    traps     = this.physics.add.staticGroup();
+    var solidColor = 0x1a1a1a;
+    var greenColor = 0x2ecc71;
+    var floorHeight = 40;
 
-        makeFloor(32, mapWidth - 32, floorY);
+    // Главный пол: 70% длины уровня, внизу
+    var mainFloorW = levelW * 0.7;
+    createPlatform.call(this, 0, levelH - floorHeight, mainFloorW, floorHeight, solidColor);
 
-    deadMonstersGroup = this.physics.add.staticGroup();
-    liveMonsters      = this.physics.add.group();
-    this.physics.add.collider(liveMonsters, platforms);
-    this.physics.add.collider(liveMonsters, traps, function(enemy) { enemy.setVelocityX(0); });
+    // Потолок коридора: 50% длины, на середине высоты
+    var ceilingW = levelW * 0.5;
+    var ceilingThickness = 40;
+    var ceilingY = levelH / 2 - ceilingThickness / 2;
+    createPlatform.call(this, 0, ceilingY, ceilingW, ceilingThickness, solidColor);
 
-        player = this.physics.add.sprite(120, floorTop, 'slime_idle');
-    player.setOrigin(0.5, 1).setScale(3).setBounce(0.05)
-          .setCollideWorldBounds(true).setDragX(420).setDepth(5); // 420 = slime drag
-    player.body.setSize(24, 24).setOffset(4, 8);
-    player.anims.play('slime-idle');
+    // Правая стена: перекрывает проход в конце уровня
+    var wallW = 40;
+    createPlatform.call(this, levelW - wallW, 0, wallW, levelH, solidColor);
 
-    playerMarker = this.add.text(player.x, player.y, '▼', {
-        fontSize: '20px', fill: '#44ff88',
-        stroke: '#003300', strokeThickness: 4
-    }).setOrigin(0.5, 1).setDepth(10);
+    // Светло-зеленые платформы (лесенкой)
+    var platW = 120;
+    var platH = 20;
+    
+    // 1-я чуть выше основного пола в высокой комнате (сразу после потолка коридора)
+    var plat1X = levelW * 0.55 - platW / 2;
+    var plat1Y = levelH - floorHeight - 80 - platH / 2;
+    createPlatform.call(this, plat1X, plat1Y, platW, platH, greenColor);
 
-    this.physics.add.collider(player, platforms);
-    this.physics.add.collider(player, liveMonsters, function() {}, null, this);
-    this.physics.add.overlap(player, traps, onSpike, null, this);
+    // 2-я посередине экрана, сдвинута правее
+    var plat2X = levelW * 0.7 - platW / 2;
+    var plat2Y = levelH / 2 + 40 - platH / 2;
+    createPlatform.call(this, plat2X, plat2Y, platW, platH, greenColor);
 
-    goblinFormTarget = spawnGoblinFormTarget(this, 560, floorTop);
-    spawnGoblinHunter(this, mapWidth - 600, floorTop);
-    spawnGoblinHunter(this, mapWidth - 900, floorTop);
-    spawnGoblinHunter(this, mapWidth - 300, floorTop);
+    // 3-я еще выше и еще правее
+    var plat3X = levelW * 0.85 - platW / 2;
+    var plat3Y = levelH * 0.25 - platH / 2;
+    createPlatform.call(this, plat3X, plat3Y, platW, platH, greenColor);
 
-    gameCamera = new GameCamera(this, player);
+    // Спавн игрока в начале уровня на главном полу
+    this.player = this.physics.add.sprite(80, levelH - floorHeight - 24, 'slime_idle');
+    player = this.player; // для совместимости с остальным кодом
+    this.player.setOrigin(0.5, 1).setScale(3).setBounce(0.05).setCollideWorldBounds(false).setDragX(420).setDepth(5);
+    this.player.body.setSize(24, 24).setOffset(4, 8);
+    this.player.anims.play('slime-idle');
 
-    // ── UI ────────────────────────────────────────────────────────────────────
-    var Z = CAM_ZOOM;
+    // Коллайдер между игроком и платформами
+    this.physics.add.collider(this.player, platforms);
 
+    // Смерть при падении в пропасть (ниже экрана)
+    this.events.on('update', function() {
+        if (player.y > levelH + 100) {
+            respawn.call(this);
+        }
+    }, this);
+
+    // --- Minimal HUD elements required by player.js to avoid undefined errors ---
     hpBar = this.add.graphics().setScrollFactor(0).setDepth(20);
-    updateHpDisplay();
+    formText = this.add.text(10, 30, 'Форма: Слизень', { fontSize: '14px', fill: '#44ff66' }).setScrollFactor(0).setDepth(20);
+    formsBar = this.add.text(10, 48, '', { fontSize: '11px', fill:'#aaaaaa' }).setScrollFactor(0).setDepth(20);
+    hintText = this.add.text(200, 48, '', { fontSize: '15px', fill:'#ffee44' }).setScrollFactor(0).setDepth(21).setOrigin(0.5,1);
+    tabHint = this.add.text(600, 48, '[TAB] — смена формы', { fontSize: '12px', fill:'#cccccc' }).setScrollFactor(0).setDepth(20).setOrigin(1,1);
+    updateHpDisplay(); updateFormsBar();
 
-    formText = this.add.text(10/Z, 30/Z, 'Форма: Слизень', {
-        fontSize: Math.round(14/Z) + 'px', fill:'#44ff66',
-        backgroundColor:'#00000099', padding:{x:Math.round(6/Z), y:Math.round(3/Z)}
-    }).setScrollFactor(0).setDepth(20);
+    console.log('[GAME] player at', this.player.x, this.player.y);
 
-    formsBar = this.add.text(10/Z, 48/Z, '', {
-        fontSize: Math.round(11/Z) + 'px', fill:'#aaaaaa',
-        backgroundColor:'#00000088', padding:{x:Math.round(5/Z), y:Math.round(2/Z)}
-    }).setScrollFactor(0).setDepth(20);
-
-    tabHint = this.add.text((GAME_W - 10)/Z, (GAME_H - 10)/Z, '[TAB] — смена формы', {
-        fontSize: Math.round(12/Z) + 'px', fill:'#cccccc',
-        backgroundColor:'#00000099', padding:{x:Math.round(6/Z), y:Math.round(3/Z)}
-    }).setScrollFactor(0).setDepth(20).setOrigin(1, 1);
-
-    hintText = this.add.text(GAME_W / (2*Z), (GAME_H - 12)/Z, '', {
-        fontSize: Math.round(15/Z) + 'px', fill:'#ffee44',
-        backgroundColor:'#000000cc', padding:{x:Math.round(10/Z), y:Math.round(5/Z)},
-        stroke:'#000000', strokeThickness: Math.max(1, Math.round(2/Z))
-    }).setScrollFactor(0).setDepth(21).setOrigin(0.5, 1);
-
+    // Камера и управление
+    this.cameras.main.setZoom(1);
+    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+    
     cursors = this.input.keyboard.createCursorKeys();
-    eKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    wKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
     aKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
     dKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-    tabKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
+    wKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+    eKey   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    tabKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
     spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 }
